@@ -9,6 +9,8 @@
 %define TERM_BG 0
 %define ENDL    10, 13
 
+%define PRINT_N_MEM 12
+
 _start:
     xor ax, ax
     mov ds, ax
@@ -32,11 +34,32 @@ _start:
     mov si, hello_msg
     call println
 
+    ; Print memory from DISPLAY_SEGMENT
+    mov cx, PRINT_N_MEM
+    shl cx, 8
+    mov cl, ch
+printmem:
+    mov ax, DISPLAY_SEGMENT
+    mov gs, ax
+    mov bx, cx
+    sub bl, bh
+    xor bh, bh
+    shl bx, 1
+    mov ax, [gs:bx]
+    mov word [memdump_addr], ax
+    
+    push cx
+    call memdump
+    pop  cx
+    dec  ch
+    jnz  printmem
+
 hang:
     jmp hang
 
 ; === Functions ===
 
+; --- clear ---
 clear_line:
     times X_MAX db 0x20 ; clear_line = " " * X_MAX
     db 0
@@ -50,12 +73,12 @@ clear_loop:
     call println        ; Print clear_line
     pop cx              ; Load the loop counter
     dec cx              ; Decrement the loop counter
-    cmp cx, 0           ; Check if done
-    jg  clear_loop      ; If not, repeat
+    jnz clear_loop      ; Repeat if not done
     mov byte [xpos], 0  ; Reset xpos
     mov byte [ypos], 0  ; Reset ypos
     ret                 ; Return
 
+; --- println ---
 println_next: call putc ; Write next char
 println:
     lodsb               ; Load next char
@@ -65,6 +88,7 @@ println:
     add byte [ypos], 1  ; Line feed
     ret                 ; Return
 
+; --- putc ---
 putc:
     mov ah, TERM_BG ; Set background color
     shl ah, 4       ; ah <<= 4
@@ -86,6 +110,31 @@ putc:
     add byte [xpos], 1  ; Move the cursor
 
     ret
+
+; --- memdump ---
+memdump_addr dw 0
+memdump_str  times 5 db 0
+memdump_hex  db '0123456789ABCDEF'
+memdump:
+    mov di, memdump_str     ; Set output to `memdump_str`
+    mov ax, [memdump_addr]  ; Load word from address
+    mov si, memdump_hex     ; Load hexstring
+    mov cx, 4               ; Initialize loop counter
+memdump_loop:
+    rol ax, 4           ; Rotate next nibble in place
+    mov bx, ax          ; Copy nibbles
+    and bx, 0x000f      ; Mask out next nibble
+    mov bl, [si + bx]   ; Get corresponding character
+    mov [di], bl        ; Put character in output
+
+    inc di              ; Move output to next char
+    dec cx              ; Decrement loop counter
+    jnz memdump_loop    ; Repeat if not done
+
+    mov  byte [di], 0            ; Terminate string
+    mov  si, memdump_str    ; Pass output to `println`
+    call println            ; Call `println`
+    ret                     ; Return
 
 ; === Variables ===
 
