@@ -27,14 +27,16 @@ hang:
 msg:
     db "Hello world!", 0
 
-println_next: call putc
+; === Functions ===
+
+println_next: call putc ; Write next char
 println:
-    lodsb
-    cmp al, 0
-    jne println_next
-    mov byte [xpos], 0
-    add byte [ypos], 1
-    ret
+    lodsb               ; Load next char
+    cmp al, 0           ; Check if null
+    jne println_next    ; Print if not, else:
+    mov byte [xpos], 0  ; Carriage return
+    add byte [ypos], 1  ; Line feed
+    ret                 ; Return
 
 putc:
     mov ah, TERM_BG ; Set background color
@@ -58,7 +60,8 @@ putc:
 
     ret
 
-; Vars
+; === Variables ===
+
 xpos:   db 0
 ypos:   db 0
 
