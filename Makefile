@@ -1,6 +1,6 @@
 ASM = nasm
 
-run: bootblock.bin
+qemu: bootblock.bin
 	qemu-system-i386 -hda bootblock.bin
 
 bootblock.bin: bootblock.asm
