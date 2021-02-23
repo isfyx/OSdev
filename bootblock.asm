@@ -3,6 +3,8 @@
 %define DISPLAY_SEGMENT 0xb800
 %define STACK_POINTER   0x9c00
 
+%define X_MAX   80
+%define Y_MAX   25
 %define TERM_FG 10
 %define TERM_BG 0
 %define ENDL    10, 13
@@ -18,16 +20,41 @@ _start:
     mov ax, DISPLAY_SEGMENT
     mov es, ax
 
-    mov si, msg
+    ; Disable cursor
+    mov ah, 1
+    mov ch, 0x3f
+    int 0x10
+
+    ; Clear screen
+    call clear
+
+    ; Hello world
+    mov si, hello_msg
     call println
 
 hang:
     jmp hang
 
-msg:
-    db "Hello world!", 0
-
 ; === Functions ===
+
+clear_line:
+    times X_MAX db 0x20 ; clear_line = " " * X_MAX
+    db 0
+clear:
+    mov byte [xpos], 0  ; Reset xpos
+    mov byte [ypos], 0  ; Reset ypos
+    mov cx, Y_MAX       ; Repeat Y_MAX times
+clear_loop:
+    push cx             ; Store the loop counter
+    mov si, clear_line  ; Load clear_line
+    call println        ; Print clear_line
+    pop cx              ; Load the loop counter
+    dec cx              ; Decrement the loop counter
+    cmp cx, 0           ; Check if done
+    jg  clear_loop      ; If not, repeat
+    mov byte [xpos], 0  ; Reset xpos
+    mov byte [ypos], 0  ; Reset ypos
+    ret                 ; Return
 
 println_next: call putc ; Write next char
 println:
@@ -62,9 +89,11 @@ putc:
 
 ; === Variables ===
 
-xpos:   db 0
-ypos:   db 0
+xpos db 0
+ypos db 0
 
-sign:
+hello_msg db "Hello world!", 0
+
+; === Padd and sign ===
     times 510-($-$$) db 0
     dw 0xaa55
